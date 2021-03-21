@@ -7,9 +7,9 @@
 
 	$8000 - $FFFF rom     32K
 
-	$FFFA - $FFFB irq address (interrupt)
-	$FFFC - $FFFD reset address (label)
-	$FFFE - $FFFF nmi address (interrupt)	
+	$FFFA - $FFFB irq address
+	$FFFC - $FFFD rst address
+	$FFFE - $FFFF nmi address
 
 */
 
@@ -18,16 +18,58 @@ function CPU() {
 	this.wrm = new Uint8Array(8192);
 	this.ram = new Uint8Array(8192);
 
+	this.iregs = {}
+	this.oregs = {}
+
 	this.ready = false;
+	this.int = false;
 
 	this.a = 0x00;
 	this.x = 0x00;
 	this.y = 0x00;
-	this.s = 0x30;
+	this.s = 0x00;
 	this.p = 0x00;
 	this.i = 0x00;
 
 	return this;
+};
+
+CPU.prototype.reset = function() {
+	for (let i = 0; i < 8192; i++) {
+		this.ram[i] = rand();
+	};
+
+	this.i = rand() << 8 | rand();
+	this.a = rand();
+	this.x = rand();
+	this.y = rand();
+	this.s = rand();
+	this.p = rand();
+};
+
+CPU.prototype.set = function(addr, value) {
+	addr &= 0xFFFF;
+	if (addr < 0x2000) {
+		this.ram[addr] = value;
+	} else if (addr >= 0x6000 && addr < 0x8000) {
+		this.wrm[addr & 0x1FFF] = value;
+	} else if (addr in this.iregs) {
+		this.iregs[addr](value);
+	};
+};
+
+CPU.prototype.get = function(addr) {
+	addr &= 0xFFFF;
+	if (addr < 0x2000) {
+		return this.ram[addr];
+	} else if (addr >= 0x8000) {
+		return this.rom[addr & 0x7FFF];
+	} else if (addr >= 0x6000) {
+		return this.wrm[addr & 0x1FFF];
+	} else if (addr in this.oregs) {
+		return this.oregs[addr]();
+	};
+	return 0x00;
 };
 
 CPU.prototype.tick = function() {
@@ -767,6 +809,7 @@ CPU.prototype.tick = function() {
 		// RTI
 		this.p = this.popb();
 		this.i = this.popw();
+		this.int = false;
 		break;
 		case 0x60:
 		// RTS
@@ -882,6 +925,18 @@ CPU.prototype.cmp = function(r, n) {
 	this.nf(r - n);
 };
 
+CPU.prototype.rst = function() {
+	this.i = this.addr(0x7FFC);
+};
+
+CPU.prototype.irq = function() {
+	this.i = this.addr(0x7FFA);
+};
+
+CPU.prototype.nmi = function() {
+	this.i = this.addr(0x7FFE);
+};
+
 function asl(n) {
 	cpu.sbit(0, n >> 7);
 	return n << 1 & 0xFF;
@@ -910,60 +965,6 @@ function inc(n) {
 
 function dec(n) {
 	return n - 1 & 0xFF;
-};
-
-CPU.prototype.reset = function() {
-	for (let i = 0; i < 8192; i++) {
-		this.ram[i] = rand();
-	};
-
-	this.i = rand() << 8 | rand();
-
-	this.a = rand();
-	this.x = rand();
-	this.y = rand();
-	this.s = rand();
-	this.p = rand();
-};
-
-CPU.prototype.set = function(addr, value) {
-	addr &= 0xFFFF;
-	if (addr < 0x2000) {
-		this.ram[addr] = value;
-	} else if (addr >= 0x6000 && addr < 0x8000) {
-		this.wrm[addr & 0x1FFF] = value;
-	};
-};
-
-CPU.prototype.get = function(addr) {
-	addr &= 0xFFFF;
-	if (addr < 0x2000) {
-		return this.ram[addr];
-	} else if (addr >= 0x8000) {
-		return this.rom[addr & 0x7FFF];
-	} else if (addr >= 0x6000) {
-		return this.wrm[addr & 0x1FFF];
-	} else if (addr == 0x2000) {
-		return rand();
-	};
-	return 0x00;
-};
-
-function reset() {
-	cpu.i = cpu.addr(0xFFFC);
-	run();
-};
-
-function power() {
-	cpu.reset();
-	reset();
-};
-
-function run() {
-	cpu.ready = true;
-	while (cpu.ready) {
-		cpu.tick();
-	};
 };
 
 function rand() {
