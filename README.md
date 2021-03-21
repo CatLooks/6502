@@ -1,5 +1,5 @@
 # Info
-6502 emulator for JS.<br>
+6502 emulator for JS (original 6502 instruction set).<br>
 This emulator does not support Decimal Mode.
 
 # Details
