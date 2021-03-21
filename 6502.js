@@ -927,14 +927,25 @@ CPU.prototype.cmp = function(r, n) {
 
 CPU.prototype.rst = function() {
 	this.i = this.addr(0x7FFC);
+	this.ready = true;
 };
 
 CPU.prototype.irq = function() {
-	this.i = this.addr(0x7FFA);
+	if (this.bit(2) == 0) {
+		this.pushw(this.i);
+		this.pushb(this.p);
+
+		this.i = this.addr(0x7FFA);
+		this.int = true;
+	};
 };
 
 CPU.prototype.nmi = function() {
+	this.pushw(this.i);
+	this.pushb(this.p);
+	
 	this.i = this.addr(0x7FFE);
+	this.int = true;
 };
 
 function asl(n) {
