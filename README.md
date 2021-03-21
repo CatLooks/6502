@@ -29,4 +29,4 @@ Pulls `PC` from IRQ vector and sets `interrupt` to true.
 * non-maskable interrupt - `nmi`:
 Pulls `PC` from NMI vector and set `interrupt` to true.
 * opcode `rti` sets `interrupt` to false.
-* opcode `brk` sets `ready` to false.
+* opcode `brk` sets `ready` to false (without pulling IRQ vector).
